@@ -192,6 +192,7 @@ def prune_weight(weight, device, percent):
 def train(args, train_dataset, model, tokenizer):
     """ Train the model """
     ########stage one#################
+    # 正常预训练步骤
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size,
@@ -306,6 +307,7 @@ def train(args, train_dataset, model, tokenizer):
 
 
     ########stage two#################
+    # 如果是ADMM剪枝，需要进行ADMM参数更新，如果是magnitude剪枝，直接进入stage 3剪枝
     iterative_count = 1.0
     percent = args.start_percent
     while(percent <= args.end_percent):
@@ -432,7 +434,7 @@ def train(args, train_dataset, model, tokenizer):
                     torch.cuda.empty_cache()
 
         ########stage third#################
-        
+        # 进行模型剪枝
         mask , dict_one, dict_two= apply_prune(model, args.device, percent, args.prune_type, args.prune_block)
         best_dev = 0
         args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
